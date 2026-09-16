@@ -62,8 +62,12 @@ app.use((err, req, res, next) => {
 // Initialize database & start server
 connectDB().then((dbStatus) => {
   isConnected = dbStatus;
-  app.listen(PORT, () => {
-    console.log(`🚀 CareerOrbit Server running on http://localhost:${PORT}`);
-    console.log(`✨ Status: ${isConnected ? 'MongoDB Active' : 'Sample Seed Mode Ready'}`);
-  });
+  if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    app.listen(PORT, () => {
+      console.log(`🚀 CareerOrbit Server running on http://localhost:${PORT}`);
+      console.log(`✨ Status: ${isConnected ? 'MongoDB Active' : 'Sample Seed Mode Ready'}`);
+    });
+  }
 });
+
+export default app;
