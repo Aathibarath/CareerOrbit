@@ -1,15 +1,40 @@
 import mongoose from 'mongoose';
 
+let cached = global.mongooseCache;
+if (!cached) {
+  cached = global.mongooseCache = { conn: null, promise: null };
+}
+
 export const connectDB = async () => {
-  try {
-    const connStr = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/careerorbit';
-    await mongoose.connect(connStr, {
-      serverSelectionTimeoutMS: 2500, // Quick timeout if no local mongo running
-    });
-    console.log(`[Database] Connected to MongoDB at ${mongoose.connection.host}`);
+  const connStr = process.env.MONGODB_URI;
+  if (!connStr) {
+    return false;
+  }
+
+  if (cached.conn && mongoose.connection.readyState === 1) {
     return true;
-  } catch (error) {
-    console.warn(`[Database] MongoDB connection skipped/unavailable (${error.message}). Running in High-Performance Local In-Memory Mode.`);
+  }
+
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(connStr, {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000,
+    }).then((m) => {
+      console.log(`[Database] Connected to MongoDB Atlas at ${m.connection.host}`);
+      return m;
+    }).catch((err) => {
+      console.warn(`[Database] Connection error: ${err.message}`);
+      cached.promise = null;
+      return null;
+    });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+    return mongoose.connection.readyState === 1;
+  } catch (e) {
+    cached.promise = null;
     return false;
   }
 };
+

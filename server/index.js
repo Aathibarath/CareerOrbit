@@ -25,12 +25,20 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Inject database connection state
+// Inject database connection state (supporting Serverless & Standalone)
 let isConnected = false;
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
+  if (process.env.MONGODB_URI) {
+    try {
+      isConnected = await connectDB();
+    } catch (e) {
+      isConnected = false;
+    }
+  }
   req.dbConnected = isConnected;
   next();
 });
+
 
 // Register REST API endpoints
 app.use('/api/auth', authRoutes);
