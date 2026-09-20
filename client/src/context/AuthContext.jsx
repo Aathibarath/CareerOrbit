@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -41,7 +42,38 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user]);
 
+  useEffect(() => {
+    const fetchMe = async () => {
+      if (token && token !== 'demo-token') {
+        try {
+          const data = await api.get('/auth/me');
+          if (data && data.user) {
+            setUser(data.user);
+            setIsAuthenticated(true);
+          }
+        } catch (err) {
+          console.warn('Could not fetch user profile from API:', err);
+        }
+      }
+    };
+    fetchMe();
+  }, [token]);
+
   const login = async (email, password) => {
+    try {
+      const data = await api.post('/auth/login', { email, password });
+      if (data && data.token && data.user) {
+        setUser(data.user);
+        setToken(data.token);
+        localStorage.setItem('careerorbit_token', data.token);
+        localStorage.setItem('careerorbit_user', JSON.stringify(data.user));
+        setIsAuthenticated(true);
+        return data.user;
+      }
+    } catch (error) {
+      console.warn('API login failed, falling back to client auth:', error);
+    }
+
     const demoUser = {
       id: 'demo-user-123',
       name: email ? email.split('@')[0] : 'Alex Morgan',
@@ -55,11 +87,26 @@ export const AuthProvider = ({ children }) => {
     setUser(demoUser);
     setToken('demo-token');
     localStorage.setItem('careerorbit_token', 'demo-token');
+    localStorage.setItem('careerorbit_user', JSON.stringify(demoUser));
     setIsAuthenticated(true);
     return demoUser;
   };
 
   const register = async (userData) => {
+    try {
+      const data = await api.post('/auth/register', userData);
+      if (data && data.token && data.user) {
+        setUser(data.user);
+        setToken(data.token);
+        localStorage.setItem('careerorbit_token', data.token);
+        localStorage.setItem('careerorbit_user', JSON.stringify(data.user));
+        setIsAuthenticated(true);
+        return data.user;
+      }
+    } catch (error) {
+      console.warn('API register failed, falling back to client auth:', error);
+    }
+
     const newUser = {
       id: 'user-' + Date.now(),
       name: userData.name || 'Alex Morgan',
@@ -73,6 +120,7 @@ export const AuthProvider = ({ children }) => {
     setUser(newUser);
     setToken('demo-token');
     localStorage.setItem('careerorbit_token', 'demo-token');
+    localStorage.setItem('careerorbit_user', JSON.stringify(newUser));
     setIsAuthenticated(true);
     return newUser;
   };
@@ -102,3 +150,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
