@@ -40,23 +40,23 @@ app.use(async (req, res, next) => {
 });
 
 
-// Register REST API endpoints
-app.use('/api/auth', authRoutes);
-app.use('/api/applications', applicationRoutes);
-app.use('/api/companies', companyRoutes);
-app.use('/api/contacts', contactRoutes);
-app.use('/api/interviews', interviewRoutes);
-app.use('/api/tasks', taskRoutes);
-app.use('/api/followups', followupRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/ai', aiRoutes);
+// Register REST API endpoints (supporting both /api/* and /* for Vercel rewrites)
+app.use(['/api/auth', '/auth'], authRoutes);
+app.use(['/api/applications', '/applications'], applicationRoutes);
+app.use(['/api/companies', '/companies'], companyRoutes);
+app.use(['/api/contacts', '/contacts'], contactRoutes);
+app.use(['/api/interviews', '/interviews'], interviewRoutes);
+app.use(['/api/tasks', '/tasks'], taskRoutes);
+app.use(['/api/followups', '/followups'], followupRoutes);
+app.use(['/api/analytics', '/analytics'], analyticsRoutes);
+app.use(['/api/ai', '/ai'], aiRoutes);
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health', '/api'], (req, res) => {
   res.json({
     status: 'online',
     app: 'CareerOrbit API',
-    database: isConnected ? 'Connected (MongoDB)' : 'High-Performance Local Mode',
+    database: req.dbConnected ? 'Connected (MongoDB)' : 'High-Performance Local Mode',
     timestamp: new Date()
   });
 });
@@ -67,15 +67,20 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: err.message || 'Internal Server Error' });
 });
 
-// Initialize database & start server
-connectDB().then((dbStatus) => {
-  isConnected = dbStatus;
-  if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+// Start server for local standalone development
+if (!process.env.VERCEL) {
+  connectDB().then((dbStatus) => {
+    isConnected = dbStatus;
     app.listen(PORT, () => {
       console.log(`🚀 CareerOrbit Server running on http://localhost:${PORT}`);
       console.log(`✨ Status: ${isConnected ? 'MongoDB Active' : 'Sample Seed Mode Ready'}`);
     });
-  }
-});
+  }).catch(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 CareerOrbit Server running on http://localhost:${PORT}`);
+    });
+  });
+}
 
 export default app;
+
